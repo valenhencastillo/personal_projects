@@ -6,7 +6,7 @@ use PHPMailer\PHPMailer\Exception;
 
 require_once 'vendor/autoload.php'; // Para PHPMailer
 
-function sendConfirmationEmail($email, $name, $registration_number, $qr_url)
+function sendConfirmationEmail($email, $name, $registration_number, $qr_url, $category)
 {
     $mail = new PHPMailer(true);
 
@@ -14,50 +14,54 @@ function sendConfirmationEmail($email, $name, $registration_number, $qr_url)
         // Configuración SMTP
         $mail->isSMTP();
         $mail->CharSet = 'UTF-8';
-        $mail->Host       = 'smtp.zoho.com'; // Cambiar por tu servidor SMTP
+        $mail->Host       = 'smtp.zoho.com';
         $mail->SMTPAuth   = true;
-        $mail->Username   = 'hackathon@tecnocleveland.com'; // Tu email
-        $mail->Password   = 'xyvRc3zav239'; // Contraseña de aplicación
+        $mail->Username   = 'hackathon@tecnocleveland.com';
+        $mail->Password   = 'xyvRc3zav239';
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
         $mail->Port       = 587;
 
-        $mail->setFrom('hackathon@tecnocleveland.com', 'Hackathon Cursos Cleveland');
+        $mail->setFrom('hackathon@tecnocleveland.com', 'Hackathon de Micro:Bit');
         $mail->addAddress($email, $name);
 
         $mail->isHTML(true);
-        $mail->Subject = 'Confirmación de Registro - Hackathon 2025';
-        $mail->Body = getConfirmationEmailTemplate($name, $registration_number, $qr_url);
+        $mail->Subject = '🚀 ¡Registro Confirmado para el Hackathon 2025!';
+        $mail->Body = getConfirmationEmailTemplate($name, $registration_number, $qr_url, $category);
 
         $mail->send();
+        return true;
     } catch (Exception $e) {
         error_log("Error enviando email: {$mail->ErrorInfo}");
+        return false;
     }
 }
 
-function sendGuardianNotificationEmail($email, $guardian_name, $student_name, $registration_number)
+function sendGuardianNotificationEmail($email, $guardian_name, $student_name, $registration_number, $category)
 {
     $mail = new PHPMailer(true);
 
     try {
         $mail->isSMTP();
         $mail->CharSet = 'UTF-8';
-        $mail->Host       = 'smtp.zoho.com'; // Cambiar por tu servidor SMTP
+        $mail->Host       = 'smtp.zoho.com';
         $mail->SMTPAuth   = true;
-        $mail->Username   = 'hackathon@tecnocleveland.com'; // Tu email
-        $mail->Password   = 'xyvRc3zav239'; // Contraseña de aplicación
+        $mail->Username   = 'hackathon@tecnocleveland.com';
+        $mail->Password   = 'xyvRc3zav239';
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
         $mail->Port       = 587;
 
-        $mail->setFrom('hackathon@tecnocleveland.com', 'Hackathon Cursos Cleveland');
+        $mail->setFrom('hackathon@tecnocleveland.com', 'Hackathon de Micro:Bit');
         $mail->addAddress($email, $guardian_name);
 
         $mail->isHTML(true);
-        $mail->Subject = 'Confirmación de Registro de Menor - Hackathon 2025';
-        $mail->Body = getGuardianEmailTemplate($guardian_name, $student_name, $registration_number);
+        $mail->Subject = 'Registro de Representante - Hackathon 2025';
+        $mail->Body = getGuardianEmailTemplate($guardian_name, $student_name, $registration_number, $category);
 
         $mail->send();
+        return true;
     } catch (Exception $e) {
         error_log("Error enviando email: {$mail->ErrorInfo}");
+        return false;
     }
 }
 
@@ -98,7 +102,7 @@ function getConfirmationEmailTemplate($name, $registration_number, $qr_url, $cat
             
             <div class='qr-code'>
                 <h3>🎟️ Tu código QR</h3>
-                <img src='$qr_url' alt='Código QR' />
+                <img src='$qr_url' alt='Código QR' width='200' height='200' />
                 <p><small>Este será tu pase de acceso.<br>
                 Presenta este código QR el día del evento junto con tu documento de identidad.</small></p>
                 <p><strong>📌 Sin este código y tu documento no podrás ingresar.</strong></p>
@@ -161,7 +165,7 @@ function getGuardianEmailTemplate($guardian_name, $student_name, $registration_n
     </head>
     <body>
         <div class='header'>
-            <h1>Registro de Menor Confirmado</h1>
+            <h1>Registro de Representante</h1>
             <p>Hackathon de Micro:Bit 2025</p>
         </div>
         <div class='content'>
