@@ -16,12 +16,12 @@ function sendConfirmationEmail($email, $name, $registration_number, $qr_url, $ca
         $mail->CharSet = 'UTF-8';
         $mail->Host       = 'smtp.zoho.com'; // Cambiar por tu servidor SMTP
         $mail->SMTPAuth   = true;
-        $mail->Username   = 'info@cursoscleveland.com'; // Email actualizado
+        $mail->Username   = 'hackathon@tecnocleveland.com'; // Email actualizado
         $mail->Password   = 'xyvRc3zav239'; // Contraseña de aplicación
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
         $mail->Port       = 587;
 
-        $mail->setFrom('info@cursoscleveland.com', 'Hackathon de Micro:bit');
+        $mail->setFrom('hackathon@tecnocleveland.com', 'Hackathon de Micro:bit');
         $mail->addAddress($email, $name);
 
         $mail->isHTML(true);
@@ -43,12 +43,12 @@ function sendGuardianNotificationEmail($email, $guardian_name, $student_name, $r
         $mail->CharSet = 'UTF-8';
         $mail->Host       = 'smtp.zoho.com';
         $mail->SMTPAuth   = true;
-        $mail->Username   = 'info@cursoscleveland.com'; // Email actualizado
+        $mail->Username   = 'hackathon@tecnocleveland.com'; // Email actualizado
         $mail->Password   = 'xyvRc3zav239';
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
         $mail->Port       = 587;
 
-        $mail->setFrom('info@cursoscleveland.com', 'Hackathon de Micro:bit');
+        $mail->setFrom('hackathon@tecnocleveland.com', 'Hackathon de Micro:bit');
         $mail->addAddress($email, $guardian_name);
 
         $mail->isHTML(true);
@@ -255,7 +255,7 @@ function getConfirmationEmailTemplate($name, $registration_number, $qr_url, $cat
             <div class='footer'>
                 <p>Saludos cordiales,</p>
                 <p><strong>Equipo Tecno Cleveland</strong></p>
-                <p>📧 info@cursoscleveland.com | ☎️ +58 412-0878674</p>
+                <p>📧 hackathon@tecnocleveland.com | ☎️ +58 412-0878674</p>
             </div>
         </div>
     </body>
@@ -369,7 +369,7 @@ function getGuardianEmailTemplate($guardian_name, $student_name, $registration_n
             <div class='footer'>
                 <p>Saludos cordiales,</p>
                 <p><strong>Equipo Tecno Cleveland</strong></p>
-                <p>📧 info@cursoscleveland.com | ☎️ +58 412-0878674</p>
+                <p>📧 hackathon@tecnocleveland.com | ☎️ +58 412-0878674</p>
             </div>
         </div>
     </body>
