@@ -1,8 +1,8 @@
 <?php
 // config.php - Configuración de base de datos
 $servername = "localhost";
-$username = "root";
-$password = "";
+$username = "hackathon_user";
+$password = "J30886449-8";
 $dbname = "hackathon_db";
 
 try {

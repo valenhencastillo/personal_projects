@@ -16,12 +16,12 @@ function sendConfirmationEmail($email, $name, $registration_number, $qr_url)
         $mail->CharSet = 'UTF-8';
         $mail->Host       = 'smtp.zoho.com'; // Cambiar por tu servidor SMTP
         $mail->SMTPAuth   = true;
-        $mail->Username   = 'info@cursoscleveland.com'; // Tu email
-        $mail->Password   = 'BErUcQfKu8c3'; // Contraseña de aplicación
+        $mail->Username   = 'hackathon@tecnocleveland.com'; // Tu email
+        $mail->Password   = 'xyvRc3zav239'; // Contraseña de aplicación
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
         $mail->Port       = 587;
 
-        $mail->setFrom('info@cursoscleveland.com', 'Hackathon Cursos Cleveland');
+        $mail->setFrom('hackathon@tecnocleveland.com', 'Hackathon Cursos Cleveland');
         $mail->addAddress($email, $name);
 
         $mail->isHTML(true);
@@ -43,12 +43,12 @@ function sendGuardianNotificationEmail($email, $guardian_name, $student_name, $r
         $mail->CharSet = 'UTF-8';
         $mail->Host       = 'smtp.zoho.com'; // Cambiar por tu servidor SMTP
         $mail->SMTPAuth   = true;
-        $mail->Username   = 'info@cursoscleveland.com'; // Tu email
-        $mail->Password   = 'BErUcQfKu8c3'; // Contraseña de aplicación
+        $mail->Username   = 'hackathon@tecnocleveland.com'; // Tu email
+        $mail->Password   = 'xyvRc3zav239'; // Contraseña de aplicación
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
         $mail->Port       = 587;
 
-        $mail->setFrom('info@cursoscleveland.com', 'Hackathon Cursos Cleveland');
+        $mail->setFrom('hackathon@tecnocleveland.com', 'Hackathon Cursos Cleveland');
         $mail->addAddress($email, $guardian_name);
 
         $mail->isHTML(true);
