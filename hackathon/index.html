@@ -35,6 +35,15 @@
             text-align: center;
         }
 
+        .logo {
+            max-width: 200px;
+            height: auto;
+            margin-bottom: 20px;
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
         .header h1 {
             font-size: 2.5em;
             margin-bottom: 10px;
@@ -227,6 +236,37 @@
             margin: 0;
         }
 
+        .download-button {
+            width: 100%;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            color: #495057;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            font-family: inherit;
+        }
+
+        .download-button:hover {
+            background-color: #e9ecef;
+            border-color: #4f46e5;
+            color: #4f46e5;
+        }
+
+        .alert {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .required::after {
+            content: " *";
+            color: #dc3545;
+        }
+
         .error {
             color: #ef4444;
             font-size: 14px;
@@ -276,6 +316,14 @@
     <div id="eulaModal" class="modal" style="display: block;">
         <div class="modal-content">
             <h2 style="color: #4f46e5; margin-bottom: 20px;">Reglamento del Torneo - EULA</h2>
+            
+            <!-- Disclaimer agregado -->
+            <div style="background: linear-gradient(135deg, #fef3c7, #fbbf24); padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #f59e0b;">
+                <p style="margin: 0; color: #92400e; font-weight: 600; text-align: center;">
+                    📖 <strong>IMPORTANTE:</strong> Debes leer completamente todo el reglamento y marcar la casilla de "Acepto" para poder continuar con el registro.
+                </p>
+            </div>
+            
             <div style="max-height: 260px; overflow-y: auto; margin-bottom: 20px; padding: 15px; background: #f9fafb; border-radius: 8px;"
                 id="rules">
                 <h3>Términos y Condiciones del Hackathon</h3>
@@ -290,14 +338,12 @@
                 <br>
                 <p><strong>Reglamento Oficial del Hackathon Micro:bit 2025</strong></p>
 
-
                 <p><strong>Capítulo I
                         Disposiciones Generales</strong></p>
 
                 <br>
 
                 <article>
-
                     <p><strong>Artículo 1.</strong></p> Objeto y alcance. El presente reglamento establece las normas y
                     directrices que regirán
                     la participación, el desarrollo y la evaluación del Hackathon Micro:bit 2025, organizado por Tecno
@@ -306,7 +352,6 @@
                 </article>
 
                 <article>
-
                     <p><strong>Artículo 2.</strong></p> Objetivos de la competencia. Los objetivos fundamentales de este
                     Hackathon son:
                     Fomentar la innovación: promover la aplicación creativa de la tecnología para resolver retos de
@@ -632,6 +677,7 @@
                     objetivo del evento.
                 </article>
             </div>
+            
             <div class="checkbox-group">
                 <input type="checkbox" id="acceptEula" disabled>
                 <label for="acceptEula">Acepto los términos y condiciones del reglamento</label>
@@ -642,8 +688,9 @@
 
     <div class="container" id="mainForm" style="display: none;">
         <div class="header">
-            <h1>🖥️ Registro Hackathon MicroBit 2025</h1>
-            <p>Educación con Tecnología que Inspira 😃 🚀</p>
+            <img src="img/hackathon_logo.png" alt="Logo Hackathon" class="logo">
+            <h1>Registro Hackathon MicroBit 2025</h1>
+            <p>Educación con Tecnología que Inspira 🚀</p>
         </div>
 
         <div class="progress-bar">
@@ -848,18 +895,23 @@
                             el hackathon y acepto todos los términos y condiciones.</label>
                     </div>
 
-                    <div class="form-group">
-                        <label for="authorizationDocument">🗎 Debe traer el docuemnto firmado el dia del evento</label>
-                        <!-- <div class="file-input">
-                            <input type="file" id="authorizationDocument" name="authorizationDocument"
-                                accept="image/*,.pdf">
-                            <label for="authorizationDocument">📄 Subir autorización firmada (JPG, PNG, PDF)</label>
-                        </div> -->
-                        <p style="font-size: 14px; color: #6b7280; margin-top: 5px;">
-                            <a href="#" onclick="downloadAuthorizationPDF(event)" style="color: #4f46e5;">Descargar
-                                formato
-                                de
-                                autorización en PDF</a>
+                   <div class="form-group">
+                        <label for="authorizationDocument" class="required">Documento de Autorización</label>
+                        
+                        <!-- Disclaimer obligatorio -->
+                        <div class="alert alert-info" style="background-color: #e0f2fe; border: 1px solid #0277bd; border-radius: 4px; padding: 12px; margin-bottom: 15px;">
+                            <strong>⚠️ OBLIGATORIO:</strong> Debe descargar el formato de autorización, firmarlo y traerlo el día del evento para poder participar en el hackathon.
+                        </div>
+                        
+                        <!-- Botón de descarga con el mismo estilo -->
+                        <div class="file-input">
+                            <button type="button" onclick="downloadAuthorizationPDF(event)" class="download-button">
+                                📋 Click para descargar formato de autorización (PDF)
+                            </button>
+                        </div>
+                        
+                        <p style="font-size: 14px; color: #6b7280; margin-top: 8px;">
+                            📝 Debe traer el documento firmado el día del evento
                         </p>
                     </div>
                 </div>
