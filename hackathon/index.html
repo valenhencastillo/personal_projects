@@ -633,7 +633,7 @@
                 </article>
             </div>
             <div class="checkbox-group">
-                <input type="checkbox" id="acceptEula" disabled>
+                <input type="checkbox" id="acceptEula">
                 <label for="acceptEula">Acepto los términos y condiciones del reglamento</label>
             </div>
             <button class="btn btn-primary" onclick="acceptEulaAndStart()">Continuar con el Registro</button>
@@ -959,7 +959,7 @@
             <div class="navigation">
                 <button type="button" class="btn btn-secondary" id="prevBtn" onclick="changeSection(-1)"
                     style="display: none;">← Anterior</button>
-                <button type="button" class="btn btn-primary" id="nextBtn" onclick="changeSection(1)" disabled>Siguiente
+                <button type="button" class="btn btn-primary" id="nextBtn" onclick="changeSection(1)">Siguiente
                     →</button>
                 <button type="submit" class="btn btn-primary" id="submitBtn" style="display: none;">🚀
                     Registrarse</button>
@@ -1090,15 +1090,15 @@
 
         const rules = document.getElementById('rules');
         const checkbox = document.getElementById('acceptEula');
-        function checkScroll() {
-            if (rules.scrollTop + rules.clientHeight >= rules.scrollHeight) {
-                checkbox.disabled = false;
-            }
-        }
+        // function checkScroll() {
+        //     if (rules.scrollTop + rules.clientHeight >= rules.scrollHeight) {
+        //         checkbox.disabled = false;
+        //     }
+        // }
 
-        rules.addEventListener('scroll', checkScroll);
-        rules.addEventListener('touchend', checkScroll);
-        rules.addEventListener('touchmove', checkScroll);
+        // rules.addEventListener('scroll', checkScroll);
+        // rules.addEventListener('touchend', checkScroll);
+        // rules.addEventListener('touchmove', checkScroll);
 
         function acceptEulaAndStart() {
             if (!checkbox.checked) {
@@ -1119,6 +1119,7 @@
 
         // Cambiar sección
         function changeSection(direction) {
+           
             if (direction === 1 && !validateCurrentSection()) {
                 return;
             }
@@ -1156,6 +1157,7 @@
 
         // Validar sección actual
         function validateCurrentSection() {
+            console.log('estoy aqui');
             const section = document.getElementById(`section${currentSection}`);
             const requiredFields = section.querySelectorAll('[required]');
             let isValid = true;
