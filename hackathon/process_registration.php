@@ -23,7 +23,7 @@ try {
         throw new Exception("Falta el token de reCAPTCHA");
     }
 
-    // Validar con Google usando cURL (más seguro que file_get_contents)
+    // Validar con Google usando cURL
     $ch = curl_init("https://www.google.com/recaptcha/api/siteverify");
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POST, true);
@@ -47,15 +47,37 @@ try {
     $data = $_POST;
     $files = $_FILES;
 
-    // Validar campos obligatorios
+    // Validar campos obligatorios básicos
     $required_fields = [
         'fullName', 'lastName', 'docType', 'documentNumber', 'birthDate', 'gender',
         'email', 'phone', 'institution', 'educationLevel', 'grade', 'category',
-        'microbitExperience', 'shirtSize'
+        'microbitExperience', 'shirtSize', 'paymentMethod'
     ];
+    
     foreach ($required_fields as $field) {
         if (empty($data[$field])) {
             throw new Exception("Campo requerido faltante: $field");
+        }
+    }
+
+    // Validar campos específicos de pago móvil
+    if ($data['paymentMethod'] === 'pago_movil') {
+        $payment_required = ['paymentPhone', 'paymentBank', 'paymentDate', 'paymentReference'];
+        
+        foreach ($payment_required as $field) {
+            if (empty($data[$field])) {
+                throw new Exception("Campo de pago requerido faltante: $field");
+            }
+        }
+        
+        // Validar que se subió el comprobante
+        if (!isset($files['paymentProof']) || $files['paymentProof']['error'] !== 0) {
+            throw new Exception("Debe subir el comprobante de pago");
+        }
+        
+        // Validar formato de referencia (4 dígitos)
+        if (!preg_match('/^\d{4}$/', $data['paymentReference'])) {
+            throw new Exception("La referencia debe tener exactamente 4 dígitos");
         }
     }
 
@@ -83,12 +105,27 @@ try {
     $authorization_doc_path = '';
 
     if (isset($files['documentPhoto']) && $files['documentPhoto']['error'] === 0) {
-    $document_photo_path = uploadFile($files['documentPhoto'], 'documents/', $registration_number . '_document');
-}
+        $document_photo_path = uploadFile($files['documentPhoto'], 'documents/', $registration_number . '_document');
+    }
 
-if (isset($files['authorizationDocument']) && $files['authorizationDocument']['error'] === 0) {
-    $authorization_doc_path = uploadFile($files['authorizationDocument'], 'authorizations/', $registration_number . '_authorization');
-}
+    if (isset($files['authorizationDocument']) && $files['authorizationDocument']['error'] === 0) {
+        $authorization_doc_path = uploadFile($files['authorizationDocument'], 'authorizations/', $registration_number . '_authorization');
+    }
+
+    // Procesar comprobante de pago
+    $payment_proof_path = '';
+    $payment_amount_bs = null;
+    $bcv_rate = null;
+
+    if ($data['paymentMethod'] === 'pago_movil') {
+        if (isset($files['paymentProof']) && $files['paymentProof']['error'] === 0) {
+            $payment_proof_path = uploadFile($files['paymentProof'], 'receipts/', $registration_number . '_payment');
+        }
+        
+        // Obtener monto y tasa del formulario
+        $payment_amount_bs = floatval($data['payment_amount_bs'] ?? 0);
+        $bcv_rate = floatval($data['bcv_rate'] ?? 0);
+    }
 
     // Insertar en base de datos
     $sql = "INSERT INTO registrations (
@@ -97,8 +134,11 @@ if (isset($files['authorizationDocument']) && $files['authorizationDocument']['e
         institution, education_level, grade, category, microbit_experience,
         expectations, shirt_size, document_photo_path, is_minor,
         guardian_name, guardian_doc_type, guardian_document, guardian_email,
-        guardian_phone, authorization_doc_path, created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+        guardian_phone, authorization_doc_path,
+        payment_method, payment_phone, payment_bank, payment_date, 
+        payment_reference, payment_proof_path, payment_amount_bs, bcv_rate,
+        created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute([
@@ -130,7 +170,15 @@ if (isset($files['authorizationDocument']) && $files['authorizationDocument']['e
         $data['guardianDocument'] ?? '',
         $data['guardianEmail'] ?? '',
         $data['guardianPhone'] ?? '',
-        $authorization_doc_path
+        $authorization_doc_path,
+        $data['paymentMethod'],
+        $data['paymentPhone'] ?? null,
+        $data['paymentBank'] ?? null,
+        $data['paymentDate'] ?? null,
+        $data['paymentReference'] ?? null,
+        $payment_proof_path,
+        $payment_amount_bs,
+        $bcv_rate
     ]);
 
     // Generar código QR
@@ -156,7 +204,9 @@ if (isset($files['authorizationDocument']) && $files['authorizationDocument']['e
 }
 
 function uploadFile($file, $directory, $baseName = null) {
-    $uploadDir = 'uploads/' . $directory . '/';
+    // La ruta será: uploads/receipts/ o uploads/documents/ etc
+    $uploadDir = 'uploads/' . $directory;
+    
     if (!file_exists($uploadDir)) {
         mkdir($uploadDir, 0777, true);
     }
@@ -190,7 +240,6 @@ function uploadFile($file, $directory, $baseName = null) {
 
     return $uploadPath;
 }
-
 
 function generateQRCode($registration_number) {
     // Usando API gratuita para generar QR
