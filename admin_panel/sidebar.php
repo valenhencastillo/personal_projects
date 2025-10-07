@@ -66,6 +66,11 @@
                                     <span class="sub-item">Participantes</span>
                                 </a>
                             </li>
+                            <li>
+                                <a href="inactivos">
+                                    <span class="sub-item">Participantes Inactivos</span>
+                                </a>
+                            </li>
 
                         </ul>
                     </div>
