@@ -70,6 +70,25 @@ require_once 'sidebar.php';
                                 <th>Institución</th>
                                 <th>Nivel Educativo</th>
                                 <th>Categoría</th>
+
+                                <th>Fecha Nacimiento</th>
+                                <th>Edad</th>
+                                <th>Género</th>
+                                <th>Dirección</th>
+                                <th>Grado</th>
+                                <th>Experiencia</th>
+                                <th>Expectativa</th>
+                                <th>Talla</th>
+                                <th>¿Menor?</th>
+                                <th>Nombre Representante</th>
+                                <th>Documento Representante</th>
+                                <th>Email Representante</th>
+                                <th>Teléfono Representante</th>
+                                <th>Método Pago</th>
+                                <th>Teléfono Pago</th>
+                                <th>Referencia</th>
+                                <th>Monto</th>
+                                <th>Tasa BCV</th>
                                 <th>Estado</th>
                             </tr>
                         </thead>
@@ -86,6 +105,25 @@ require_once 'sidebar.php';
                                     <td><?= htmlspecialchars($r['institution']) ?></td>
                                     <td><?= htmlspecialchars($r['education_level']) ?></td>
                                     <td><?= htmlspecialchars($r['category']) ?></td>
+                                    <td><?= htmlspecialchars($r['birth_date']) ?></td>
+                                    <td><?= htmlspecialchars($r['age']) ?></td>
+                                    <td><?= htmlspecialchars($r['gender']) ?></td>
+                                    <td><?= htmlspecialchars($r['address']) ?></td>
+                                    <td><?= htmlspecialchars($r['grade']) ?></td>
+                                    
+                                    <td><?= htmlspecialchars($r['microbit_experience']) ?></td>
+                                    <td><?= htmlspecialchars($r['expectations']) ?></td>
+                                    <td><?= htmlspecialchars($r['shirt_size']) ?></td>
+                                    <td><?= $r['is_minor'] ? "✅" : "❌"; ?></td>
+                                    <td><?= htmlspecialchars($r['guardian_name']) ?></td>
+                                    <td><?= htmlspecialchars($r['guardian_document']) ?></td>
+                                    <td><?= htmlspecialchars($r['guardian_email']) ?></td>
+                                    <td><?= htmlspecialchars($r['guardian_phone']) ?></td>
+                                    <td><?= htmlspecialchars($r['payment_method']) ?></td>
+                                    <td><?= htmlspecialchars($r['payment_phone']) ?></td>
+                                    <td><?= htmlspecialchars($r['payment_reference']) ?></td>
+                                    <td><?= htmlspecialchars($r['payment_amount_bs']) ?></td>
+                                    <td><?= htmlspecialchars($r['bcv_rate']) ?></td>
                                     <td>
                                         <?php if ($r['status'] == 1) { ?>
                                             <button class="btn btn-danger btn-sm toggle-status" data-id="<?= $r['id'] ?>" data-status="1">Desactivar</button>
