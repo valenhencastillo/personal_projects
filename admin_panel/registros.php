@@ -57,7 +57,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $id = intval($_POST['id']);
 
     // Actualizar el campo payment_verified a 1 (validado)
-    $stmt = $pdo->prepare("UPDATE registrations SET payment_verified = 1 WHERE id = :id");
+    $stmt = $pdo->prepare("UPDATE registrations SET payment_verified = 1, verified_by = :verified_by WHERE id = :id");
+    $username = $_SESSION['username'];
+    $stmt->bindParam(':verified_by', $username, PDO::PARAM_STR);
     $stmt->bindParam(':id', $id, PDO::PARAM_INT);
 
     if ($stmt->execute()) {
