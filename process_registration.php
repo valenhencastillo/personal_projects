@@ -16,7 +16,7 @@ try {
     // ============================
     // Validar reCAPTCHA v3
     // ============================
-    $recaptchaSecret = "6Lf0580rAAAAAOGOFrPQTHaMNHZW1EKWfp_K5lwy"; 
+    $recaptchaSecret = "6Lf0580rAAAAAOGOFrPQTHaMNHZW1EKWfp_K5lwy";
     $recaptchaToken  = $_POST['recaptcha_token'] ?? '';
 
     if (empty($recaptchaToken)) {
@@ -49,11 +49,23 @@ try {
 
     // Validar campos obligatorios básicos
     $required_fields = [
-        'fullName', 'lastName', 'docType', 'documentNumber', 'birthDate', 'gender',
-        'email', 'phone', 'institution', 'educationLevel', 'grade', 'category',
-        'microbitExperience', 'shirtSize', 'paymentMethod'
+        'fullName',
+        'lastName',
+        'docType',
+        'documentNumber',
+        'birthDate',
+        'gender',
+        'email',
+        'phone',
+        'institution',
+        'educationLevel',
+        'grade',
+        'category',
+        'microbitExperience',
+        'shirtSize',
+        'paymentMethod'
     ];
-    
+
     foreach ($required_fields as $field) {
         if (empty($data[$field])) {
             throw new Exception("Campo requerido faltante: $field");
@@ -63,18 +75,18 @@ try {
     // Validar campos específicos de pago móvil
     if ($data['paymentMethod'] === 'pago_movil') {
         $payment_required = ['paymentPhone', 'paymentBank', 'paymentDate', 'paymentReference'];
-        
+
         foreach ($payment_required as $field) {
             if (empty($data[$field])) {
                 throw new Exception("Campo de pago requerido faltante: $field");
             }
         }
-        
+
         // Validar que se subió el comprobante
         if (!isset($files['paymentProof']) || $files['paymentProof']['error'] !== 0) {
             throw new Exception("Debe subir el comprobante de pago");
         }
-        
+
         // Validar formato de referencia (4 dígitos)
         if (!preg_match('/^\d{4}$/', $data['paymentReference'])) {
             throw new Exception("La referencia debe tener exactamente 4 dígitos");
@@ -95,6 +107,18 @@ try {
 
     if ($age < 8 || $age > 20) {
         throw new Exception("La edad debe estar entre 8 y 20 años");
+    }
+
+    // Aquí obtienes la categoría según la edad
+    $category = ($age <= 14) ? 'Junior' : 'Senior';
+
+    // Contar cuántos registros activos existen para la categoría
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM registrations WHERE category = ? AND status = 1");
+    $stmt->execute([$category]);
+    $count = $stmt->fetchColumn();
+
+    if ($count >= 40) {
+        throw new Exception("Cupos para la categoría $category completos");
     }
 
     // Generar número de registro único
@@ -121,7 +145,7 @@ try {
         if (isset($files['paymentProof']) && $files['paymentProof']['error'] === 0) {
             $payment_proof_path = uploadFile($files['paymentProof'], 'receipts/', $registration_number . '_payment');
         }
-        
+
         // Obtener monto y tasa del formulario
         $payment_amount_bs = floatval($data['payment_amount_bs'] ?? 0);
         $bcv_rate = floatval($data['bcv_rate'] ?? 0);
@@ -197,16 +221,16 @@ try {
         'qr_code' => $qr_url,
         'message' => 'Registro completado exitosamente'
     ]);
-
 } catch (Exception $e) {
     http_response_code(400);
     echo json_encode(['error' => $e->getMessage()]);
 }
 
-function uploadFile($file, $directory, $baseName = null) {
+function uploadFile($file, $directory, $baseName = null)
+{
     // La ruta será: uploads/receipts/ o uploads/documents/ etc
     $uploadDir = 'uploads/' . $directory;
-    
+
     if (!file_exists($uploadDir)) {
         mkdir($uploadDir, 0777, true);
     }
@@ -216,7 +240,7 @@ function uploadFile($file, $directory, $baseName = null) {
 
     // Validar tipo de archivo
     $allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
-    if (!in_array($file['type'], $allowedTypes) || !in_array($ext, ['jpg','jpeg','png','pdf'])) {
+    if (!in_array($file['type'], $allowedTypes) || !in_array($ext, ['jpg', 'jpeg', 'png', 'pdf'])) {
         throw new Exception('Tipo de archivo no permitido');
     }
 
@@ -241,8 +265,8 @@ function uploadFile($file, $directory, $baseName = null) {
     return $uploadPath;
 }
 
-function generateQRCode($registration_number) {
+function generateQRCode($registration_number)
+{
     // Usando API gratuita para generar QR
     return "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" . urlencode($registration_number);
 }
-?>
