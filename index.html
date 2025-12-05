@@ -1755,17 +1755,17 @@
         }
 
         // Generar código QR (simulado)
-        function generateQRCode(registrationNumber) {
-            // En implementación real, usar una librería como qrcode.js
-            return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${registrationNumber}`;
-        }
+        // function generateQRCode(registrationNumber) {
+        //     // En implementación real, usar una librería como qrcode.js
+        //     return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${registrationNumber}`;
+        // }
 
         // Validar duplicados de cédula (simulado)
-        function checkDuplicateDocument(docNumber) {
-            // En implementación real, hacer consulta a base de datos
-            const registeredDocuments = ['12345678', '87654321']; // Simulado
-            return registeredDocuments.includes(docNumber);
-        }
+        // function checkDuplicateDocument(docNumber) {
+        //     // En implementación real, hacer consulta a base de datos
+        //     const registeredDocuments = ['12345678', '87654321']; // Simulado
+        //     return registeredDocuments.includes(docNumber);
+        // }
 
         // Validación en tiempo real del documento
         document.getElementById('documentNumber').addEventListener('blur', async function () {
