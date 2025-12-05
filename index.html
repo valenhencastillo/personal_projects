@@ -340,7 +340,7 @@
             <p><strong>7. Código de conducta:</strong> Respeto mutuo y colaboración.</p>
 
             <br>
-            <p><strong>Reglamento Oficial del Hackathon Micro:bit 2025</strong></p>
+            <p><strong>Reglamento Oficial del Hackathon Micro:bit 2026</strong></p>
 
 
             <p><strong>Capítulo I
@@ -352,7 +352,7 @@
 
                 <p><strong>Artículo 1.</strong></p> Objeto y alcance. El presente reglamento establece las normas y
                 directrices que regirán
-                la participación, el desarrollo y la evaluación del Hackathon Micro:bit 2025, organizado por Tecno
+                la participación, el desarrollo y la evaluación del Hackathon Micro:bit 2026, organizado por Tecno
                 Cleveland. Este documento es de cumplimiento obligatorio para todos los participantes, jueces,
                 tutores y personal de la organización.
             </article>
@@ -712,14 +712,14 @@
                     <div class="form-group">
                         <label for="fullName" class="required">Nombres</label>
                         <input type="text" id="fullName" name="fullName" required pattern="[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+"
-                            title="Solo se permiten letras">
+                            title="Solo se permiten letras" autocomplete="off">
                         <div class="error" id="fullNameError">El nombre solo debe contener letras</div>
                     </div>
 
                     <div class="form-group">
                         <label for="lastName" class="required">Apellidos</label>
                         <input type="text" id="lastName" name="lastName" required pattern="[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+"
-                            title="Solo se permiten letras">
+                            title="Solo se permiten letras" autocomplete="off">
                         <div class="error" id="lastNameError">El apellido solo debe contener letras</div>
                     </div>
                 </div>
@@ -748,14 +748,14 @@
                 <div class="form-group">
                     <label for="documentNumber" class="required">Número de Documento</label>
                     <input type="text" id="documentNumber" name="documentNumber" maxlength="10" required
-                        placeholder="Ej: 12345678">
+                        placeholder="Ej: 12345678" autocomplete="off">
                     <div class="error" id="documentError">Este documento ya está registrado</div>
                 </div>
 
                 <div class="form-group">
                     <label for="documentPhoto" class="required">Foto del Documento de Identidad</label>
                     <div class="file-input">
-                        <input type="file" id="documentPhoto" name="documentPhoto" accept="image/*,.pdf" required>
+                        <input type="file" id="documentPhoto" name="documentPhoto" accept="image/*,.pdf" required autocomplete="off">
                         <label for="documentPhoto">📄 Click para subir documento (JPG, PNG, PDF - Máx 5MB)</label>
                     </div>
                 </div>
@@ -763,7 +763,7 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label for="birthDate" class="required">Fecha de Nacimiento</label>
-                        <input type="date" id="birthDate" name="birthDate" required onchange="calculateAge()">
+                        <input type="date" id="birthDate" name="birthDate" required onchange="calculateAge()" autocomplete="off">
                     </div>
 
                     <div class="form-group">
@@ -785,7 +785,7 @@
 
                     <div class="form-group">
                         <label for="email" class="required">Correo Electrónico</label>
-                        <input type="email" id="email" name="email" required>
+                        <input type="email" id="email" name="email" required autocomplete="off">
                         <div class="error" id="emailError">Formato de email inválido</div>
                     </div>
                 </div>
@@ -794,7 +794,7 @@
                     <div class="form-group">
                         <label for="phone" class="required">Teléfono</label>
                         <input type="tel" id="phone" name="phone" required placeholder="+58 XXX-XXXXXXX"
-                            pattern="\+58\s\d{3}-\d{7}">
+                            pattern="\+58\s\d{3}-\d{7}" autocomplete="off">
                     </div>
 
                     <div class="form-group">
@@ -840,7 +840,7 @@
                     <div class="form-group">
                         <label for="address" class="required">Dirección</label>
                         <textarea id="address" name="address" rows="3" required
-                            placeholder="Dirección completa"></textarea>
+                            placeholder="Dirección completa" autocomplete="off"></textarea>
                     </div>
                 </div>
 
@@ -853,7 +853,7 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label for="guardianName" class="required">Nombre del Representante</label>
-                            <input type="text" id="guardianName" name="guardianName" pattern="[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+">
+                            <input type="text" id="guardianName" name="guardianName" pattern="[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+" autocomplete="off">
                         </div>
 
                         <div class="form-group">
@@ -878,24 +878,24 @@
 
                         <div class="form-group">
                             <label for="guardianDocument" class="required">Cédula del Representante</label>
-                            <input type="text" id="guardianDocument" maxlength="10" name="guardianDocument">
+                            <input type="text" id="guardianDocument" maxlength="10" name="guardianDocument" autocomplete="off">
                         </div>
                     </div>
 
                     <div class="form-row">
                         <div class="form-group">
                             <label for="guardianEmail" class="required">Email del Representante</label>
-                            <input type="email" id="guardianEmail" name="guardianEmail">
+                            <input type="email" id="guardianEmail" name="guardianEmail" autocomplete="off">
                         </div>
 
                         <div class="form-group">
                             <label for="guardianPhone" class="required">Teléfono del Representante</label>
-                            <input type="tel" id="guardianPhone" name="guardianPhone" placeholder="+58 XXX-XXXXXXX">
+                            <input type="tel" id="guardianPhone" name="guardianPhone" placeholder="+58 XXX-XXXXXXX" autocomplete="off">
                         </div>
                     </div>
 
                     <div class="checkbox-group">
-                        <input type="checkbox" id="guardianAuthorization" name="guardianAuthorization">
+                        <input type="checkbox" id="guardianAuthorization" name="guardianAuthorization" autocomplete="off">
                         <label for="guardianAuthorization">Como representante legal, autorizo la participación del menor
                             en
                             el hackathon y acepto todos los términos y condiciones.</label>
@@ -931,7 +931,7 @@
 
                 <div class="form-group">
                     <label for="institution" class="required">Institución Educativa</label>
-                    <input type="text" id="institution" name="institution" required>
+                    <input type="text" id="institution" name="institution" required autocomplete="off">
                 </div>
 
                 <div class="form-group">
@@ -975,7 +975,7 @@
                 <div class="form-group">
                     <label for="expectations">Expectativas del evento (opcional)</label>
                     <textarea id="expectations" name="expectations" rows="4"
-                        placeholder="¿Qué esperas aprender o lograr en este hackathon?"></textarea>
+                        placeholder="¿Qué esperas aprender o lograr en este hackathon?" autocomplete="off"></textarea>
                 </div>
             </div>
 
@@ -1054,7 +1054,7 @@
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="paymentPhone" class="required">Teléfono desde donde pagó</label>
-                                <input type="tel" id="paymentPhone" name="paymentPhone" placeholder="+58 XXX-XXXXXXX">
+                                <input autocomplete="off" type="tel" id="paymentPhone" name="paymentPhone" placeholder="+58 XXX-XXXXXXX">
                             </div>
 
                             <div class="form-group">
@@ -1093,13 +1093,13 @@
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="paymentDate" class="required">Fecha del Pago</label>
-                                <input type="date" id="paymentDate" name="paymentDate">
+                                <input autocomplete="off" type="date" id="paymentDate" name="paymentDate">
                             </div>
 
                             <div class="form-group">
                                 <label for="paymentReference" class="required">Últimos 4 dígitos de la
                                     referencia</label>
-                                <input type="text" id="paymentReference" name="paymentReference" maxlength="4"
+                                <input autocomplete="off" type="text" id="paymentReference" name="paymentReference" maxlength="4"
                                     pattern="[0-9]{4}" placeholder="1234">
                             </div>
                         </div>
@@ -1155,13 +1155,13 @@
                 </div>
 
                 <div class="checkbox-group">
-                    <input type="checkbox" id="imageRights" name="imageRights" required>
+                    <input autocomplete="off" type="checkbox" id="imageRights" name="imageRights" required>
                     <label for="imageRights" class="required">Autorizo el uso de mi imagen en fotografías y videos del
                         evento para fines promocionales y educativos.</label>
                 </div>
 
                 <div class="checkbox-group">
-                    <input type="checkbox" id="dataVerification" name="dataVerification" required>
+                    <input autocomplete="off" type="checkbox" id="dataVerification" name="dataVerification" required>
                     <label for="dataVerification" class="required">Confirmo que toda la información proporcionada es
                         veraz y completa.</label>
                 </div>
