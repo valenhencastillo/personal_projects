@@ -1252,34 +1252,23 @@
         let bcvRate = 0;
         let calculatedAmount = 0;
 
-        // Función para obtener tasa BCV - VERSIÓN MEJORADA CON MÚLTIPLES FUENTES
         async function fetchBCVRate() {
             try {
-                // OPCIÓN 1: API de justcarlux (más rápida y estructurada)
-                const response = await fetch('https://bcv.justcarlux.dev/api/v1/rates');
+                // Llamar a tu propio proxy en lugar de APIs externas
+                const response = await fetch('/api-bcv-proxy.php');
                 
                 if (!response.ok) {
                     throw new Error('Error al obtener la tasa del BCV');
                 }
                 
                 const data = await response.json();
-                console.log('Respuesta de la API BCV (justcarlux):', data);
+                console.log('Respuesta del proxy BCV:', data);
                 
-                // Estructura de respuesta:
-                // {
-                //   "rates": {
-                //     "usd": 370.2544,
-                //     "eur": 440.4768495,
-                //     ...
-                //   },
-                //   "updatedAt": 1770041641282
-                // }
-                
-                if (!data || !data.rates || !data.rates.usd || isNaN(data.rates.usd)) {
+                if (!data.success || !data.rate || isNaN(data.rate)) {
                     throw new Error('Datos de tasa inválidos');
                 }
                 
-                bcvRate = parseFloat(data.rates.usd);
+                bcvRate = parseFloat(data.rate);
                 calculatedAmount = parseFloat((20 * bcvRate).toFixed(2));
                 
                 // Mostrar la tasa
@@ -1291,111 +1280,15 @@
                     maximumFractionDigits: 2
                 });
                 
-                // Mostrar fecha de actualización
-                const updateDate = new Date(data.updatedAt);
-                console.log(`Tasa BCV actualizada: ${updateDate.toLocaleString('es-VE')}`);
+                console.log(`Tasa BCV obtenida desde: ${data.source}`);
                 
                 return bcvRate;
                 
             } catch (error) {
-                console.error('Error en API principal (justcarlux):', error);
-                
-                // Intentar API de respaldo
-                return await fetchBCVRateBackup();
-            }
-        }
-        
-        // Función de respaldo con API alternativa (rafnixg)
-        async function fetchBCVRateBackup() {
-            try {
-                console.log('Intentando API de respaldo (rafnixg)...');
-                
-                const response = await fetch('https://bcv-api.rafnixg.dev/rates/');
-                
-                if (!response.ok) {
-                    throw new Error('Error en API de respaldo');
-                }
-                
-                const data = await response.json();
-                console.log('Respuesta API respaldo (rafnixg):', data);
-                
-                // Estructura de respuesta:
-                // {
-                //   "dollar": 370.2544,
-                //   "date": "2026-02-02"
-                // }
-                
-                if (!data || !data.dollar || isNaN(data.dollar)) {
-                    throw new Error('Datos de tasa inválidos en respaldo');
-                }
-                
-                bcvRate = parseFloat(data.dollar);
-                calculatedAmount = parseFloat((20 * bcvRate).toFixed(2));
-                
-                // Mostrar la tasa
-                document.getElementById('bcvRate').textContent = bcvRate.toFixed(2);
-                
-                // Mostrar el monto con formato
-                document.getElementById('amountBs').textContent = calculatedAmount.toLocaleString('es-VE', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
-                });
-                
-                console.log(`Tasa BCV actualizada (respaldo): ${data.date}`);
-                
-                return bcvRate;
-                
-            } catch (error) {
-                console.error('Error en API de respaldo (rafnixg):', error);
-                
-                // Intentar tercera opción
-                return await fetchBCVRateBackup2();
-            }
-        }
-        
-        // Función de respaldo secundaria (PyDolar)
-        async function fetchBCVRateBackup2() {
-            try {
-                console.log('Intentando segunda API de respaldo (PyDolar)...');
-                
-                const response = await fetch('https://pydolarvenezuela-api.vercel.app/api/v1/dollar/page/bcv');
-                
-                if (!response.ok) {
-                    throw new Error('Error en segunda API de respaldo');
-                }
-                
-                const data = await response.json();
-                console.log('Respuesta segunda API respaldo (PyDolar):', data);
-                
-                // Esta API retorna: { "price": "370.25", "date": "02/02/2026", ... }
-                if (!data || !data.price || isNaN(parseFloat(data.price))) {
-                    throw new Error('Datos de tasa inválidos en segunda API de respaldo');
-                }
-                
-                bcvRate = parseFloat(data.price);
-                calculatedAmount = parseFloat((20 * bcvRate).toFixed(2));
-                
-                // Mostrar la tasa
-                document.getElementById('bcvRate').textContent = bcvRate.toFixed(2);
-                
-                // Mostrar el monto con formato
-                document.getElementById('amountBs').textContent = calculatedAmount.toLocaleString('es-VE', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
-                });
-                
-                console.log(`Tasa BCV actualizada (segunda API respaldo): ${data.date}`);
-                
-                return bcvRate;
-                
-            } catch (error) {
-                console.error('Error en todas las APIs:', error);
+                console.error('Error al obtener tasa BCV:', error);
                 document.getElementById('bcvRate').textContent = 'Error';
                 document.getElementById('amountBs').textContent = 'No disponible';
-                
-                // Mensaje de error más informativo
-                alert('No se pudo obtener la tasa del BCV desde ninguna fuente disponible. Por favor, intente nuevamente más tarde o contacte al soporte.');
-                
+                alert('No se pudo obtener la tasa del BCV. Por favor, intente nuevamente más tarde.');
                 return 0;
             }
         }
@@ -2006,4 +1899,5 @@
 
 
 </html>
+
 
