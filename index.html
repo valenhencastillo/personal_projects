@@ -1558,6 +1558,15 @@
 
             ageInput.value = age;
 
+            if(age < 18) {
+                isMinor = true;
+            }
+            else {
+                isMinor = false;
+            }
+
+            updateMinorSection();
+
             if (age < 8 || age > 20) {
                 ageError.style.display = 'block';
                 ageInput.style.borderColor = '#ef4444';
