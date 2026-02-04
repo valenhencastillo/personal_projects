@@ -2,120 +2,99 @@
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 
-function getBCVRate() {
-    $url = 'https://www.bcv.org.ve/';
-    
+// AGREGAR: Función para logging
+function logError($message, $data = null) {
+    $logFile = __DIR__ . '/bcv-api-errors.log';
+    $timestamp = date('Y-m-d H:i:s');
+    $logMessage = "[$timestamp] $message";
+    if ($data) {
+        $logMessage .= "\n" . print_r($data, true);
+    }
+    $logMessage .= "\n---\n";
+    file_put_contents($logFile, $logMessage, FILE_APPEND);
+}
+
+$apis = [
+    'https://bcv.justcarlux.dev/api/v1/rates',
+    'https://bcv-api.rafnixg.dev/rates/',
+    'https://pydolarvenezuela-api.vercel.app/api/v1/dollar/page/bcv'
+];
+
+$result = null;
+$errors = []; // AGREGAR: Array para guardar errores
+
+foreach ($apis as $api) {
     $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_URL, $api);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
     
-    $html = curl_exec($ch);
+    $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($ch); // AGREGAR
     curl_close($ch);
     
-    if ($httpCode !== 200 || !$html) {
-        return null;
-    }
-    
-    // Extraer el valor del USD usando expresiones regulares
-    // Buscar el patrón: USD seguido del valor
-    if (preg_match('/USD.*?([0-9]{2,3}[,\.][0-9]{2,10})/s', $html, $matches)) {
-        $rate = str_replace(',', '.', $matches[1]);
-        
-        // Extraer fecha
-        $fecha = null;
-        if (preg_match('/(\d{2})\/(\d{2})\/(\d{4})|(\w+),\s*(\d{2})\s+(\w+)\s+(\d{4})/i', $html, $dateMatches)) {
-            $fecha = $dateMatches[0];
-        }
-        
-        return [
-            'success' => true,
-            'rate' => floatval($rate),
-            'source' => 'bcv-direct',
-            'date' => $fecha,
-            'timestamp' => time()
+    // AGREGAR: Log de cada intento
+    if ($httpCode !== 200 || !$response) {
+        $errorInfo = [
+            'api' => $api,
+            'httpCode' => $httpCode,
+            'curlError' => $curlError,
+            'response' => substr($response, 0, 200) // Primeros 200 caracteres
         ];
+        $errors[] = $errorInfo;
+        logError("Fallo al consultar API", $errorInfo);
+        continue;
     }
     
-    return null;
-}
-
-// Sistema de caché para evitar consultas excesivas
-$cacheFile = 'bcv_rate_cache.json';
-$cacheTime = 3600; // 1 hora
-
-if (file_exists($cacheFile) && (time() - filemtime($cacheFile)) < $cacheTime) {
-    $cachedData = json_decode(file_get_contents($cacheFile), true);
-    echo json_encode($cachedData);
-    exit;
-}
-
-// Intentar con scraping directo primero
-$result = getBCVRate();
-
-// Si falla, usar las APIs de respaldo
-if (!$result) {
-    $apis = [
-        'https://bcv.justcarlux.dev/api/v1/rates',
-        'https://bcv-api.rafnixg.dev/rates/',
-        'https://pydolarvenezuela-api.vercel.app/api/v1/dollar/page/bcv'
-    ];
+    $data = json_decode($response, true);
     
-    foreach ($apis as $api) {
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $api);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-        
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-        
-        if ($httpCode === 200 && $response) {
-            $data = json_decode($response, true);
-            
-            if (isset($data['rates']['usd'])) {
-                $result = [
-                    'success' => true,
-                    'rate' => $data['rates']['usd'],
-                    'source' => 'justcarlux',
-                    'date' => $data['updatedAt'] ?? null
-                ];
-                break;
-            } elseif (isset($data['dollar'])) {
-                $result = [
-                    'success' => true,
-                    'rate' => $data['dollar'],
-                    'source' => 'rafnixg',
-                    'date' => $data['date'] ?? null
-                ];
-                break;
-            } elseif (isset($data['price'])) {
-                $result = [
-                    'success' => true,
-                    'rate' => floatval($data['price']),
-                    'source' => 'pydolar',
-                    'date' => $data['date'] ?? null
-                ];
-                break;
-            }
-        }
+    // AGREGAR: Log de respuesta exitosa
+    logError("Respuesta recibida de $api", [
+        'httpCode' => $httpCode,
+        'data' => $data
+    ]);
+    
+    // Normalizar respuesta según la API
+    if (isset($data['rates']['usd'])) {
+        $result = [
+            'success' => true,
+            'rate' => $data['rates']['usd'],
+            'source' => 'justcarlux',
+            'updatedAt' => $data['updatedAt'] ?? null
+        ];
+        break;
+    } elseif (isset($data['dollar'])) {
+        $result = [
+            'success' => true,
+            'rate' => $data['dollar'],
+            'source' => 'rafnixg',
+            'date' => $data['date'] ?? null
+        ];
+        break;
+    } elseif (isset($data['price'])) {
+        $result = [
+            'success' => true,
+            'rate' => floatval($data['price']),
+            'source' => 'pydolar',
+            'date' => $data['date'] ?? null
+        ];
+        break;
     }
 }
 
 if ($result) {
-    // Guardar en caché
-    file_put_contents($cacheFile, json_encode($result));
     echo json_encode($result);
 } else {
+    // AGREGAR: Log final de fallo
+    logError("Todas las APIs fallaron", $errors);
+    
     http_response_code(503);
     echo json_encode([
         'success' => false,
-        'error' => 'No se pudo obtener la tasa desde ninguna fuente'
+        'error' => 'No se pudo obtener la tasa desde ninguna fuente',
+        'debug' => $errors // Incluir detalles de errores
     ]);
 }
 ?>
