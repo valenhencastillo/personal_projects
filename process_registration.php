@@ -151,6 +151,11 @@ try {
         $bcv_rate = floatval($data['bcv_rate'] ?? 0);
     }
 
+    $paymentDate = !empty($data['paymentDate']) ? $data['paymentDate'] : null;
+    $paymentPhone = !empty($data['paymentPhone']) ? $data['paymentPhone'] : null;
+    $paymentBank = !empty($data['paymentBank']) ? $data['paymentBank'] : null;
+    $paymentReference = !empty($data['paymentReference']) ? $data['paymentReference'] : null;
+
     // Insertar en base de datos
     $sql = "INSERT INTO registrations (
         registration_number, full_name, last_name, document_type, document_number, nationality,
@@ -196,10 +201,10 @@ try {
         $data['guardianPhone'] ?? '',
         $authorization_doc_path,
         $data['paymentMethod'],
-        $data['paymentPhone'] ?? null,
-        $data['paymentBank'] ?? null,
-        $data['paymentDate'] ?? null,
-        $data['paymentReference'] ?? null,
+        $paymentPhone,      // Variable limpia
+        $paymentBank,       // Variable limpia
+        $paymentDate,       // Variable limpia (esta era la del error)
+        $paymentReference,  // Variable limpia
         $payment_proof_path,
         $payment_amount_bs,
         $bcv_rate
