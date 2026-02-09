@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comunicación por Radio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @keyframes ping-slow {
+            0% { transform: scale(1); opacity: 1; }
+            75%, 100% { transform: scale(2); opacity: 0; }
+        }
+        .animate-ping-slow {
+            animation: ping-slow 1s cubic-bezier(0, 0, 0.2, 1) infinite;
+        }
+        input[type=range] {
+            accent-color: #22c55e;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-indigo-50 to-blue-100 font-sans text-gray-800 pb-12">
+
+    <header class="bg-indigo-600 text-white p-8 shadow-lg">
+        <div class="max-w-5xl mx-auto text-center">
+            <div class="flex justify-center items-center gap-4 mb-4">
+                <i data-lucide="radio" class="w-12 h-12 text-yellow-300"></i>
+                <h1 class="text-3xl md:text-5xl font-extrabold tracking-tight">Comunicación por Radio</h1>
+            </div>
+            <p class="text-lg md:text-xl font-light opacity-90 max-w-2xl mx-auto">"Hoy descubrirás cómo tu Micro:bit puede enviar y recibir mensajes sin cables"</p>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto p-4 md:p-8 space-y-12">
+        
+        <section class="bg-white rounded-2xl shadow-xl overflow-hidden border border-indigo-100">
+            <div class="bg-indigo-50 p-6 border-b border-indigo-100">
+                <h2 class="text-2xl font-bold text-indigo-900 flex items-center gap-2">
+                    <i data-lucide="book-open" class="w-6 h-6"></i>
+                    ¿Qué es la comunicación por radio?
+                </h2>
+            </div>
+            <div class="p-6 md:p-8 grid md:grid-cols-2 gap-8 items-center">
+                <div class="space-y-4 text-gray-700 leading-relaxed">
+                    <p>La comunicación por radio del Micro:bit es una forma inalámbrica de corto alcance y baja energía. ¡Es como crear tu propia red de mensajería invisible!</p>
+                    <ul class="space-y-4 mt-4">
+                        
+                        <li class="flex items-start gap-3 bg-blue-50 p-3 rounded-lg">
+                            <i data-lucide="settings" class="w-6 h-6 text-blue-500 flex-shrink-0 mt-1"></i>
+                            <div>
+                                <strong class="text-blue-800">Grupo de Radio:</strong>
+                                <p class="text-sm">Para hablar, las placas deben estar en el mismo "canal"</p>
+                            </div>
+                        </li>
+                        
+                        <li class="flex items-start gap-3 bg-green-50 p-3 rounded-lg">
+                            <i data-lucide="wifi" class="w-6 h-6 text-green-500 flex-shrink-0 mt-1"></i>
+                            <div>
+                                <strong class="text-green-800">Transmisión:</strong>
+                                <p class="text-sm">Convierte datos en ondas electromagnéticas</p>
+                            </div>
+                        </li>
+                        
+                        <li class="flex items-start gap-3 bg-purple-50 p-3 rounded-lg">
+                            <i data-lucide="zap" class="w-6 h-6 text-purple-500 flex-shrink-0 mt-1"></i>
+                            <div>
+                                <strong class="text-purple-800">Recepción:</strong>
+                                <p class="text-sm">La placa receptora atrapa y decodifica la señal</p>
+                            </div>
+                        </li>
+                        
+                    </ul>
+                </div>
+                <div class="flex justify-center">
+                    <div class="bg-gradient-to-tr from-gray-200 to-white p-8 rounded-full shadow-inner">
+                        <i data-lucide="radio" class="w-48 h-48 text-indigo-400 opacity-80"></i>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <div class="flex items-center gap-4 mb-6">
+                <h2 class="text-3xl font-bold text-gray-800">🎮 ¡Pruébalo tú mismo!</h2>
+                <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-semibold border border-green-200">
+                    Simulador Interactivo
+                </span>
+            </div>
+
+            <div class="bg-gray-100 rounded-3xl p-4 md:p-10 border-4 border-dashed border-gray-300 relative overflow-hidden">
+                
+                <div id="wave-animation" class="hidden absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full h-20 flex justify-center items-center z-0 pointer-events-none">
+                    <div class="w-full h-1 bg-gradient-to-r from-transparent via-green-400 to-transparent animate-pulse"></div>
+                    <div class="absolute text-green-600 font-mono text-xs font-bold animate-bounce bg-white px-2 rounded shadow-sm">
+                        ENVIANDO SEÑAL...
+                    </div>
+                </div>
+
+                <div class="grid md:grid-cols-3 gap-8 items-center relative z-10">
+                    
+                    <div class="order-1 flex flex-col items-center">
+                        <div class="text-center mb-2 font-bold text-gray-600">EMISOR</div>
+                        <div class="flex flex-col items-center bg-gray-900 p-6 rounded-3xl shadow-xl border-b-8 border-gray-800 w-full max-w-[300px] transform transition-transform hover:scale-105">
+                            <div class="w-full flex justify-between items-center mb-4 text-gray-500">
+                                <span class="text-xs font-bold tracking-widest">BBC micro:bit</span>
+                                <i data-lucide="wifi" id="icon-wifi-1" class="w-6 h-6 text-gray-700"></i>
+                            </div>
+                            <div class="bg-black border-4 border-gray-700 rounded-lg p-2 mb-6 shadow-inner">
+                                <div id="led-grid-1" class="grid grid-cols-5 gap-1 w-32 h-32"></div>
+                            </div>
+                            <div class="flex justify-between w-full px-4 mb-4">
+                                <div class="flex flex-col items-center">
+                                    <button onclick="handleSend()" id="btn-a-1" class="w-12 h-12 rounded-full bg-black border-2 border-gray-600 active:bg-gray-800 active:border-green-500 transition-colors shadow-lg flex items-center justify-center text-gray-400 font-bold mb-1 hover:text-white">A</button>
+                                    <span class="text-xs text-white">Botón A</span>
+                                </div>
+                                <div class="flex flex-col items-center">
+                                    <button class="w-12 h-12 rounded-full bg-black border-2 border-gray-600 cursor-not-allowed shadow-lg flex items-center justify-center text-gray-400 font-bold mb-1">B</button>
+                                    <span class="text-xs text-white">Botón B</span>
+                                </div>
+                            </div>
+                            <div class="w-full h-8 bg-yellow-500 rounded-b-xl border-t-4 border-black mt-2 opacity-80"></div>
+                            
+                            <div class="mt-6 bg-white/10 p-3 rounded-lg w-full">
+                                <div class="flex items-center justify-between text-white mb-2">
+                                    <span class="text-sm font-medium flex items-center gap-2"><i data-lucide="settings" class="w-3 h-3"></i> Grupo</span>
+                                    <span id="group-display-1" class="font-mono bg-black px-2 py-1 rounded text-green-400">1</span>
+                                </div>
+                                <input type="range" min="0" max="10" value="1" oninput="updateGroup(1, this.value)" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+                            </div>
+                            
+                        </div>
+                        <p class="text-center mt-4 text-sm text-indigo-600 font-medium animate-bounce">👇 ¡Pulsa A aquí!</p>
+                    </div>
+
+                    <div class="order-2 text-center flex flex-col items-center justify-center space-y-4">
+                        <div id="status-box" class="p-4 rounded-xl border-2 bg-white border-gray-200 text-gray-600 transition-colors duration-500">
+                            <p id="status-text" class="font-mono text-sm">Listo para transmitir.</p>
+                        </div>
+                        <i id="status-arrow" data-lucide="arrow-right" class="w-12 h-12 text-gray-300 transform transition-all duration-500"></i>
+                        <div class="text-xs text-gray-400 max-w-[150px]">Intenta cambiar el número de grupo en una placa y pulsa A. ¿Qué pasa?</div>
+                    </div>
+
+                    <div class="order-3 flex flex-col items-center">
+                        <div class="text-center mb-2 font-bold text-gray-600">RECEPTOR</div>
+                        <div class="flex flex-col items-center bg-gray-900 p-6 rounded-3xl shadow-xl border-b-8 border-gray-800 w-full max-w-[300px] transform transition-transform hover:scale-105">
+                            <div class="w-full flex justify-between items-center mb-4 text-gray-500">
+                                <span class="text-xs font-bold tracking-widest">BBC micro:bit</span>
+                                <i data-lucide="wifi" id="icon-wifi-2" class="w-6 h-6 text-gray-700"></i>
+                            </div>
+                            <div class="bg-black border-4 border-gray-700 rounded-lg p-2 mb-6 shadow-inner">
+                                <div id="led-grid-2" class="grid grid-cols-5 gap-1 w-32 h-32"></div>
+                            </div>
+                            <div class="flex justify-between w-full px-4 mb-4">
+                                <div class="flex flex-col items-center">
+                                    <button class="w-12 h-12 rounded-full bg-black border-2 border-gray-600 cursor-not-allowed shadow-lg flex items-center justify-center text-gray-400 font-bold mb-1">A</button>
+                                    <span class="text-xs text-white">Botón A</span>
+                                </div>
+                                <div class="flex flex-col items-center">
+                                    <button class="w-12 h-12 rounded-full bg-black border-2 border-gray-600 cursor-not-allowed shadow-lg flex items-center justify-center text-gray-400 font-bold mb-1">B</button>
+                                    <span class="text-xs text-white">Botón B</span>
+                                </div>
+                            </div>
+                            <div class="w-full h-8 bg-yellow-500 rounded-b-xl border-t-4 border-black mt-2 opacity-80"></div>
+                            
+                            <div class="mt-6 bg-white/10 p-3 rounded-lg w-full">
+                                <div class="flex items-center justify-between text-white mb-2">
+                                    <span class="text-sm font-medium flex items-center gap-2"><i data-lucide="settings" class="w-3 h-3"></i> Grupo</span>
+                                    <span id="group-display-2" class="font-mono bg-black px-2 py-1 rounded text-green-400">1</span>
+                                </div>
+                                <input type="range" min="0" max="10" value="1" oninput="updateGroup(2, this.value)" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+                            </div>
+                            
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        lucide.createIcons();
+        
+        let group1 = 1;
+        let group2 = 1;
+        let isSending = false;
+        
+        const sendPattern = [12];
+        const receivePattern = [6,7,8,11,13,16,17,18];
+        
+        function initGrids() {
+            [1, 2].forEach(id => {
+                const container = document.getElementById(`led-grid-${id}`);
+                container.innerHTML = '';
+                for (let i = 0; i < 25; i++) {
+                    const led = document.createElement('div');
+                    led.id = `mb-${id}-led-${i}`;
+                    led.className = 'rounded-sm bg-gray-800/30 transition-all duration-300';
+                    container.appendChild(led);
+                }
+            });
+        }
+        
+        function updateGroup(id, value) {
+            value = parseInt(value);
+            if (id === 1) group1 = value;
+            else group2 = value;
+            document.getElementById(`group-display-${id}`).textContent = value;
+        }
+        
+        function handleSend() {
+            if (isSending) return;
+            isSending = true;
+            
+            updateStatus("Codificando señal y transmitiendo...", "sending");
+            toggleAnimation(true);
+            setLedState(1, sendPattern, 'tx');
+            
+            setTimeout(() => {
+                isSending = false;
+                toggleAnimation(false);
+                setLedState(1, [], 'off');
+                
+                if (group1 === group2) {
+                    updateStatus("¡Éxito! Señal recibida y decodificada.", "success");
+                    setLedState(2, receivePattern, 'rx');
+                    setTimeout(() => {
+                        setLedState(2, [], 'off');
+                        updateStatus("Listo para transmitir.", "default");
+                    }, 3000);
+                } else {
+                    updateStatus("Fallo: Los grupos de radio no coinciden.", "error");
+                }
+            }, 1500);
+        }
+        
+        function setLedState(mbId, indices, type) {
+            for (let i = 0; i < 25; i++) {
+                const led = document.getElementById(`mb-${mbId}-led-${i}`);
+                if (indices.includes(i)) {
+                    if (type === 'tx') {
+                        led.className = 'rounded-sm bg-red-500 animate-ping-slow';
+                    } else if (type === 'rx') {
+                        led.className = 'rounded-sm bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.8)]';
+                    }
+                } else {
+                    led.className = 'rounded-sm bg-gray-800/30';
+                }
+            }
+        }
+        
+        function toggleAnimation(active) {
+            const wave = document.getElementById('wave-animation');
+            const arrow = document.getElementById('status-arrow');
+            const wifi1 = document.getElementById('icon-wifi-1');
+            
+            if (active) {
+                wave.classList.remove('hidden');
+                arrow.classList.add('text-green-500', 'translate-x-2');
+                wifi1.classList.add('text-green-400', 'animate-pulse');
+                wifi1.classList.remove('text-gray-700');
+            } else {
+                wave.classList.add('hidden');
+                arrow.classList.remove('text-green-500', 'translate-x-2');
+                wifi1.classList.remove('text-green-400', 'animate-pulse');
+                wifi1.classList.add('text-gray-700');
+            }
+        }
+        
+        function updateStatus(text, type) {
+            const box = document.getElementById('status-box');
+            const label = document.getElementById('status-text');
+            label.textContent = text;
+            box.className = "p-4 rounded-xl border-2 transition-colors duration-500";
+            
+            if (type === 'error') {
+                box.classList.add('bg-red-50', 'border-red-200', 'text-red-700');
+            } else if (type === 'success') {
+                box.classList.add('bg-green-50', 'border-green-200', 'text-green-700');
+            } else {
+                box.classList.add('bg-white', 'border-gray-200', 'text-gray-600');
+            }
+        }
+        
+        initGrids();
+    </script>
+</body>
+</html>
