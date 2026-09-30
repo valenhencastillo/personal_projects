@@ -1,5 +1,6 @@
 <?php
 require_once 'database.php';
+
 if (!isset($_SESSION['user_id'])) {
     header("Location: index.php");
     exit();
@@ -10,30 +11,18 @@ if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
-// Verificar si es petición AJAX para actualizar estado
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id'], $_POST['status'], $_POST['csrf_token'])) {
-    // Validar token CSRF
+// 1. AJAX: Cambiar estado de la inscripción (Activar/Cancelar/Rechazar)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'toggle_status' && isset($_POST['id'], $_POST['status'], $_POST['csrf_token'])) {
     if (!hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
         echo json_encode(['success' => false, 'msg' => 'Token CSRF inválido']);
         exit;
     }
 
-    // Verificar usuario autenticado (ejemplo simple)
-    if (empty($_SESSION['user_id'])) {
-        echo json_encode(['success' => false, 'msg' => 'No autorizado']);
-        exit;
-    }
-
     $id = intval($_POST['id']);
-    $status = intval($_POST['status']);
-    $nuevo_status = ($status === 1) ? 0 : 1;
+    $nuevo_status = $_POST['status'];
 
-    // Consulta preparada para evitar inyección SQL
-    $stmt = $pdo->prepare("UPDATE registrations SET status = :nuevo_status WHERE id = :id");
-    $stmt->bindParam(':nuevo_status', $nuevo_status, PDO::PARAM_INT);
-    $stmt->bindParam(':id', $id, PDO::PARAM_INT);
-
-    if ($stmt->execute()) {
+    $stmt = $pdo->prepare("UPDATE registrations SET status = :status, updated_at = NOW() WHERE id = :id");
+    if ($stmt->execute([':status' => $nuevo_status, ':id' => $id])) {
         echo json_encode(['success' => true, 'nuevo_status' => $nuevo_status]);
     } else {
         echo json_encode(['success' => false, 'msg' => 'Error en base de datos']);
@@ -41,37 +30,163 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id'], $_POST['status'
     exit;
 }
 
+// 2. AJAX: Validar pago e inscripción simultáneamente
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'validate_payment' && isset($_POST['id'], $_POST['csrf_token'])) {
-    // Validar token CSRF
     if (!hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
         echo json_encode(['success' => false, 'msg' => 'Token CSRF inválido']);
         exit;
     }
 
-    // Verificar usuario autenticado
-    if (empty($_SESSION['user_id'])) {
-        echo json_encode(['success' => false, 'msg' => 'No autorizado']);
-        exit;
-    }
+    $registration_id = intval($_POST['id']);
+    $username = $_SESSION['username'] ?? 'admin';
 
-    $id = intval($_POST['id']);
+    try {
+        $pdo->beginTransaction();
 
-    // Actualizar el campo payment_verified a 1 (validado)
-    $stmt = $pdo->prepare("UPDATE registrations SET payment_verified = 1, verified_by = :verified_by WHERE id = :id");
-    $username = $_SESSION['username'];
-    $stmt->bindParam(':verified_by', $username, PDO::PARAM_STR);
-    $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+        // Actualizar Pago
+        $stmtPay = $pdo->prepare("UPDATE payments SET status = 'verificado', verified_by = :username, verified_at = NOW() WHERE registration_id = :reg_id");
+        $stmtPay->execute([':username' => $username, ':reg_id' => $registration_id]);
 
-    if ($stmt->execute()) {
+        // Actualizar Inscripción a Confirmado
+        $stmtReg = $pdo->prepare("UPDATE registrations SET status = 'confirmado', verified_by = :username WHERE id = :reg_id");
+        $stmtReg->execute([':username' => $username, ':reg_id' => $registration_id]);
+
+        $pdo->commit();
         echo json_encode(['success' => true]);
-    } else {
-        echo json_encode(['success' => false, 'msg' => 'Error en base de datos']);
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        echo json_encode(['success' => false, 'msg' => 'Error al procesar la validación: ' . $e->getMessage()]);
     }
     exit;
 }
 
-// Obtener registros
-$stmt = $pdo->query("SELECT * FROM registrations WHERE status = 1");
+// 3. AJAX: Rechazar pago y liberar cupo
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'reject_payment' && isset($_POST['id'], $_POST['csrf_token'])) {
+    if (!hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
+        echo json_encode(['success' => false, 'msg' => 'Token CSRF inválido']);
+        exit;
+    }
+
+    $registration_id = intval($_POST['id']);
+    $username = $_SESSION['username'] ?? 'admin';
+
+    try {
+        $pdo->beginTransaction();
+
+        // Obtener category_id para recalcular cupo
+        $stmtCat = $pdo->prepare("SELECT category_id, event_id FROM registrations WHERE id = ?");
+        $stmtCat->execute([$registration_id]);
+        $regInfo = $stmtCat->fetch(PDO::FETCH_ASSOC);
+        if (!$regInfo) {
+            throw new Exception("Registro no encontrado.");
+        }
+
+        // Actualizar pago a rechazado
+        $stmtPay = $pdo->prepare("UPDATE payments SET status = 'rechazado', verified_by = :username, verified_at = NOW() WHERE registration_id = :reg_id");
+        $stmtPay->execute([':username' => $username, ':reg_id' => $registration_id]);
+
+        // Actualizar inscripción a cancelado
+        $stmtReg = $pdo->prepare("UPDATE registrations SET status = 'cancelado', verified_by = :username WHERE id = :reg_id");
+        $stmtReg->execute([':username' => $username, ':reg_id' => $registration_id]);
+
+        // Recalcular registered_count de la categoría (excluyendo rechazados)
+        $stmtUpdateCount = $pdo->prepare("
+            UPDATE event_categories ec
+            SET ec.registered_count = (
+                SELECT COUNT(*) FROM registrations r
+                LEFT JOIN payments p ON r.id = p.registration_id
+                WHERE r.category_id = ec.id AND r.event_id = ?
+                AND (p.status IS NULL OR p.status != 'rechazado')
+            )
+            WHERE ec.id = ?
+        ");
+        $stmtUpdateCount->execute([$regInfo['event_id'], $regInfo['category_id']]);
+
+        $pdo->commit();
+        echo json_encode(['success' => true]);
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        echo json_encode(['success' => false, 'msg' => 'Error al procesar el rechazo: ' . $e->getMessage()]);
+    }
+    exit;
+}
+
+// Obtener la lista de eventos/hackathons para el desplegable de filtro
+$stmtEvents = $pdo->query("SELECT id, name FROM events ORDER BY id DESC");
+$eventsList = $stmtEvents->fetchAll(PDO::FETCH_ASSOC);
+
+// Capturar el filtro de evento seleccionado (0 = Todos)
+$selected_event_id = isset($_GET['event_id']) ? intval($_GET['event_id']) : 0;
+
+// Si no se especificó un evento (0), seleccionar el último evento disponible
+if ($selected_event_id === 0 && !empty($eventsList)) {
+    $selected_event_id = $eventsList[0]['id']; // El primer elemento es el más reciente
+}
+
+// Construir la consulta con o sin filtro de evento
+$whereClause = "";
+$params = [];
+
+if ($selected_event_id > 0) {
+    $whereClause = " WHERE r.event_id = :event_id ";
+    $params[':event_id'] = $selected_event_id;
+}
+
+$query = "
+    SELECT 
+        r.id AS registration_id,
+        r.registration_number,
+        r.status AS registration_status,
+        r.shirt_size,
+        r.expectations,
+        
+        -- Evento y Categoría
+        e.name AS event_title,
+        ec.name AS category_name,
+        
+        -- Participante
+        p.full_name,
+        p.last_name,
+        p.document_type,
+        p.document_number,
+        p.email,
+        p.phone,
+        p.state,
+        p.city,
+        p.institution,
+        p.education_level,
+        p.grade,
+        p.birth_date,
+        p.age,
+        p.gender,
+        p.address,
+        p.microbit_experience,
+        p.is_minor,
+        p.guardian_name,
+        p.guardian_document,
+        p.guardian_email,
+        p.guardian_phone,
+        
+        -- Pago
+        pay.payment_method,
+        pay.payment_phone,
+        pay.payment_bank,
+        pay.payment_reference,
+        pay.payment_amount_bs,
+        pay.bcv_rate,
+        pay.payment_proof_path,
+        pay.status AS payment_status
+    FROM registrations r
+    INNER JOIN participants p ON r.participant_id = p.id
+    INNER JOIN events e ON r.event_id = e.id
+    INNER JOIN event_categories ec ON r.category_id = ec.id
+    LEFT JOIN payments pay ON pay.registration_id = r.id
+    {$whereClause}
+    ORDER BY r.id DESC
+";
+
+$stmt = $pdo->prepare($query);
+$stmt->execute($params);
 $registrations = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 require_once 'header.php';
@@ -80,27 +195,45 @@ require_once 'sidebar.php';
 
 <div class="row">
     <div class="col-md-12">
-        <div class="card">
-            <div class="card-header">
-                <div class="card-title">Registros</div>
+        <div class="card shadow-sm">
+            <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center py-3 gap-3">
+                <h5 class="card-title fw-bold mb-0">Gestión de Inscripciones y Pagos</h5>
+
+                <!-- Formulario Filtro por Evento -->
+                <form method="GET" action="" class="d-flex align-items-center gap-2">
+                    <label for="event_id" class="form-label mb-0 fw-semibold text-nowrap"><i class="bi bi-funnel-fill text-primary me-1"></i> Filtrar Evento:</label>
+                    <select name="event_id" id="event_id" class="form-select form-select-sm" onchange="this.form.submit()">
+                        <option value="0" <?= $selected_event_id === 0 ? 'selected' : '' ?>>-- Todos los Eventos --</option>
+                        <?php foreach ($eventsList as $ev): ?>
+                            <option value="<?= $ev['id'] ?>" <?= $selected_event_id === $ev['id'] ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($ev['name']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <?php if ($selected_event_id > 0): ?>
+                        <a href="registros.php" class="btn btn-outline-secondary btn-sm" title="Limpiar filtro"><i class="bi bi-x-circle"></i></a>
+                    <?php endif; ?>
+                </form>
             </div>
+
             <div class="card-body">
                 <div class="table-responsive">
-                    <table class="table mt-3" id="registrationsTable">
-                        <thead>
+                    <table class="table table-hover align-middle mt-2" id="registrationsTable">
+                        <thead class="table-light">
                             <tr>
-                                <th>Acción</th>
-                                <th>ID</th>
-                                <th>Nombre Completo</th>
+                                <th>Validación</th>
+                                <th>N° Registro</th>
+                                <th>Evento</th>
+                                <th>Participante</th>
                                 <th>Documento</th>
                                 <th>Email</th>
                                 <th>Teléfono</th>
                                 <th>Estado</th>
                                 <th>Ciudad</th>
                                 <th>Institución</th>
-                                <th>Nivel Educativo</th>
+                                <th>Nivel</th>
                                 <th>Categoría</th>
-                                <th>Fecha Nacimiento</th>
+                                <th>F. Nacimiento</th>
                                 <th>Edad</th>
                                 <th>Género</th>
                                 <th>Dirección</th>
@@ -109,88 +242,91 @@ require_once 'sidebar.php';
                                 <th>Expectativa</th>
                                 <th>Talla</th>
                                 <th>¿Menor?</th>
-                                <th>Nombre Representante</th>
-                                <th>Documento Representante</th>
-                                <th>Email Representante</th>
-                                <th>Teléfono Representante</th>
+                                <th>Representante</th>
+                                <th>Doc. Rep.</th>
+                                <th>Email Rep.</th>
+                                <th>Teléfono Rep.</th>
                                 <th>Método Pago</th>
-                                <th>Teléfono Pago</th>
+                                <th>Tel. Pago</th>
+                                <th>Banco</th>
                                 <th>Referencia</th>
-                                <th>Monto</th>
+                                <th>Monto (Bs)</th>
                                 <th>Tasa BCV</th>
-                                <th>Estado</th>
+                                <!-- <th>Estado Reg.</th> -->
                             </tr>
                         </thead>
                         <tbody>
                             <?php foreach ($registrations as $r): ?>
                                 <tr>
                                     <td>
-                                        <?php if ($r['payment_verified'] == 0): ?>
-                                            <button
-                                                class="btn btn-warning btn-sm validate-payment-btn"
-                                                data-id="<?= $r['id'] ?>"
+                                        <?php if ($r['payment_status'] === 'verificado'): ?>
+                                            <button class="btn btn-success btn-sm validate-payment-btn"
+                                                data-id="<?= $r['registration_id'] ?>"
                                                 data-name="<?= htmlspecialchars($r['full_name'] . ' ' . $r['last_name']) ?>"
-                                                data-payment-method="<?= htmlspecialchars($r['payment_method']) ?>"
-                                                data-payment-phone="<?= htmlspecialchars($r['payment_phone']) ?>"
-                                                data-payment-reference="<?= htmlspecialchars($r['payment_reference']) ?>"
-                                                data-payment-amount="<?= htmlspecialchars($r['payment_amount_bs']) ?>"
-                                                data-bcv-rate="<?= htmlspecialchars($r['bcv_rate']) ?>"
-                                                data-payment-proof="<?= htmlspecialchars($r['payment_proof_path']) ?>"
-                                                data-payment-verified="<?= $r['payment_verified'] ?>">
+                                                data-payment-method="<?= htmlspecialchars($r['payment_method'] ?? 'N/A') ?>"
+                                                data-payment-phone="<?= htmlspecialchars($r['payment_phone'] ?? 'N/A') ?>"
+                                                data-payment-bank="<?= htmlspecialchars($r['payment_bank'] ?? 'N/A') ?>"
+                                                data-payment-reference="<?= htmlspecialchars($r['payment_reference'] ?? 'N/A') ?>"
+                                                data-payment-amount="<?= htmlspecialchars($r['payment_amount_bs'] ?? '0.00') ?>"
+                                                data-bcv-rate="<?= htmlspecialchars($r['bcv_rate'] ?? '0.00') ?>"
+                                                data-payment-proof="<?= htmlspecialchars($r['payment_proof_path'] ?? '') ?>"
+                                                data-payment-verified="1">
+                                                <i class="bi bi-check-circle-fill me-1"></i> Pago Verificado
+                                            </button>
+                                        <?php elseif ($r['payment_status'] === 'rechazado'): ?>
+                                            <span class="badge bg-danger">Rechazado</span>
+                                        <?php else: ?>
+                                            <button class="btn btn-warning btn-sm validate-payment-btn"
+                                                data-id="<?= $r['registration_id'] ?>"
+                                                data-name="<?= htmlspecialchars($r['full_name'] . ' ' . $r['last_name']) ?>"
+                                                data-payment-method="<?= htmlspecialchars($r['payment_method'] ?? 'N/A') ?>"
+                                                data-payment-phone="<?= htmlspecialchars($r['payment_phone'] ?? 'N/A') ?>"
+                                                data-payment-bank="<?= htmlspecialchars($r['payment_bank'] ?? 'N/A') ?>"
+                                                data-payment-reference="<?= htmlspecialchars($r['payment_reference'] ?? 'N/A') ?>"
+                                                data-payment-amount="<?= htmlspecialchars($r['payment_amount_bs'] ?? '0.00') ?>"
+                                                data-bcv-rate="<?= htmlspecialchars($r['bcv_rate'] ?? '0.00') ?>"
+                                                data-payment-proof="<?= htmlspecialchars($r['payment_proof_path'] ?? '') ?>"
+                                                data-payment-verified="0">
                                                 <i class="bi bi-exclamation-triangle-fill me-1"></i> Validar Pago
                                             </button>
-                                        <?php else: ?>
-                                            <button
-                                                class="btn btn-success btn-sm validate-payment-btn"
-                                                data-id="<?= $r['id'] ?>"
-                                                data-name="<?= htmlspecialchars($r['full_name'] . ' ' . $r['last_name']) ?>"
-                                                data-payment-method="<?= htmlspecialchars($r['payment_method']) ?>"
-                                                data-payment-phone="<?= htmlspecialchars($r['payment_phone']) ?>"
-                                                data-payment-reference="<?= htmlspecialchars($r['payment_reference']) ?>"
-                                                data-payment-amount="<?= htmlspecialchars($r['payment_amount_bs']) ?>"
-                                                data-bcv-rate="<?= htmlspecialchars($r['bcv_rate']) ?>"
-                                                data-payment-proof="<?= htmlspecialchars($r['payment_proof_path']) ?>"
-                                                data-payment-verified="<?= $r['payment_verified'] ?>">
-                                                <i class="bi bi-check-circle-fill me-1"></i> Pago Verificado
+                                            <button class="btn btn-outline-danger btn-sm reject-payment-btn ms-1"
+                                                data-id="<?= $r['registration_id'] ?>"
+                                                title="Rechazar pago y liberar cupo">
+                                                <i class="bi bi-x-circle"></i> Rechazar
                                             </button>
                                         <?php endif; ?>
                                     </td>
 
-                                    <td><?= $r['id'] ?></td>
+                                    <td><strong><?= htmlspecialchars($r['registration_number']) ?></strong></td>
+                                    <td><span class="badge bg-primary text-wrap"><?= htmlspecialchars($r['event_title']) ?></span></td>
                                     <td><?= htmlspecialchars($r['full_name'] . ' ' . $r['last_name']) ?></td>
-                                    <td><?= htmlspecialchars($r['document_type'] . ' ' . $r['document_number']) ?></td>
+                                    <td><?= htmlspecialchars(strtoupper($r['document_type']) . '-' . $r['document_number']) ?></td>
                                     <td><?= htmlspecialchars($r['email']) ?></td>
                                     <td><?= htmlspecialchars($r['phone']) ?></td>
                                     <td><?= htmlspecialchars($r['state']) ?></td>
                                     <td><?= htmlspecialchars($r['city']) ?></td>
                                     <td><?= htmlspecialchars($r['institution']) ?></td>
-                                    <td><?= htmlspecialchars($r['education_level']) ?></td>
-                                    <td><?= htmlspecialchars($r['category']) ?></td>
+                                    <td><?= htmlspecialchars(ucfirst($r['education_level'])) ?></td>
+                                    <td><span class="badge bg-info text-dark"><?= htmlspecialchars($r['category_name']) ?></span></td>
                                     <td><?= htmlspecialchars($r['birth_date']) ?></td>
                                     <td><?= htmlspecialchars($r['age']) ?></td>
-                                    <td><?= htmlspecialchars($r['gender']) ?></td>
+                                    <td><?= htmlspecialchars(ucfirst($r['gender'])) ?></td>
                                     <td><?= htmlspecialchars($r['address']) ?></td>
-                                    <td><?= htmlspecialchars($r['grade']) ?></td>
-                                    <td><?= htmlspecialchars($r['microbit_experience']) ?></td>
-                                    <td><?= htmlspecialchars($r['expectations']) ?></td>
+                                    <td><?= htmlspecialchars($r['grade'] ?? 'N/A') ?></td>
+                                    <td><?= htmlspecialchars(ucfirst($r['microbit_experience'])) ?></td>
+                                    <td><?= htmlspecialchars($r['expectations'] ?? 'N/A') ?></td>
                                     <td><?= htmlspecialchars($r['shirt_size']) ?></td>
                                     <td><?= $r['is_minor'] ? "✅" : "❌"; ?></td>
-                                    <td><?= htmlspecialchars($r['guardian_name']) ?></td>
-                                    <td><?= htmlspecialchars($r['guardian_document']) ?></td>
-                                    <td><?= htmlspecialchars($r['guardian_email']) ?></td>
-                                    <td><?= htmlspecialchars($r['guardian_phone']) ?></td>
-                                    <td><?= htmlspecialchars($r['payment_method']) ?></td>
-                                    <td><?= htmlspecialchars($r['payment_phone']) ?></td>
-                                    <td><?= htmlspecialchars($r['payment_reference']) ?></td>
-                                    <td><?= htmlspecialchars($r['payment_amount_bs']) ?></td>
-                                    <td><?= htmlspecialchars($r['bcv_rate']) ?></td>
-                                    <td>
-                                        <?php if ($r['status'] == 1) { ?>
-                                            <button class="btn btn-danger btn-sm toggle-status" data-id="<?= $r['id'] ?>" data-status="1">Desactivar</button>
-                                        <?php } else { ?>
-                                            <button class="btn btn-success btn-sm toggle-status" data-id="<?= $r['id'] ?>" data-status="0">Activar</button>
-                                        <?php } ?>
-                                    </td>
+                                    <td><?= htmlspecialchars($r['guardian_name'] ?? 'N/A') ?></td>
+                                    <td><?= htmlspecialchars($r['guardian_document'] ?? 'N/A') ?></td>
+                                    <td><?= htmlspecialchars($r['guardian_email'] ?? 'N/A') ?></td>
+                                    <td><?= htmlspecialchars($r['guardian_phone'] ?? 'N/A') ?></td>
+                                    <td><?= htmlspecialchars($r['payment_method'] ?? 'N/A') ?></td>
+                                    <td><?= htmlspecialchars($r['payment_phone'] ?? 'N/A') ?></td>
+                                    <td><?= htmlspecialchars($r['payment_bank'] ?? 'N/A') ?></td>
+                                    <td><?= htmlspecialchars($r['payment_reference'] ?? 'N/A') ?></td>
+                                    <td><?= htmlspecialchars(number_format((float)$r['payment_amount_bs'], 2, ',', '.')) ?></td>
+                                    <td><?= htmlspecialchars(number_format((float)$r['bcv_rate'], 2, ',', '.')) ?></td>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>
@@ -201,30 +337,33 @@ require_once 'sidebar.php';
     </div>
 </div>
 
+<!-- Modal de Validación de Pago -->
 <div class="modal fade" id="paymentValidationModal" tabindex="-1" aria-labelledby="paymentValidationModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content shadow-lg rounded-3">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="paymentValidationModalLabel">Validar Pago</h5>
+                <h5 class="modal-title" id="paymentValidationModalLabel">Detalle de Comprobante de Pago</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
             <div class="modal-body">
-                <h5 id="modalFullName" class="fw-bold mb-3"></h5>
-                <div class="row gy-2">
-                    <div class="col-md-6">
-                        <p><strong>Método de Pago:</strong> <span id="modalPaymentMethod"></span></p>
-                        <p><strong>Teléfono Pago:</strong> <span id="modalPaymentPhone"></span></p>
-                        <p><strong>Referencia:</strong> <span id="modalPaymentReference"></span></p>
-                        <p><strong>Monto (Bs):</strong> <span id="modalPaymentAmount"></span></p>
-                        <p><strong>Tasa BCV:</strong> <span id="modalBcvRate"></span></p>
+                <h5 id="modalFullName" class="fw-bold mb-3 text-primary"></h5>
+                <div class="row gy-3">
+                    <div class="col-md-6 fs-6">
+                        <p class="mb-1"><strong>Método:</strong> <span id="modalPaymentMethod"></span></p>
+                        <p class="mb-1"><strong>Banco emisor:</strong> <span id="modalPaymentBank"></span></p>
+                        <p class="mb-1"><strong>Teléfono Origen:</strong> <span id="modalPaymentPhone"></span></p>
+                        <p class="mb-1"><strong>N° Referencia:</strong> <span id="modalPaymentReference" class="badge bg-secondary fs-6"></span></p>
+                        <p class="mb-1"><strong>Monto Depositado:</strong> <span id="modalPaymentAmount" class="fw-bold text-success"></span> Bs.</p>
+                        <p class="mb-1"><strong>Tasa BCV Aplicada:</strong> <span id="modalBcvRate"></span> Bs.</p>
                     </div>
                     <div class="col-md-6 text-center">
-                        <img id="modalPaymentProof" src="" alt="Comprobante de Pago" class="img-fluid rounded border" style="max-height: 250px;">
+                        <label class="form-label d-block fw-bold text-muted">Comprobante Adjunto</label>
+                        <a id="modalPaymentProofLink" href="#" target="_blank">
+                            <img id="modalPaymentProof" src="" alt="Comprobante de Pago" class="img-fluid rounded border shadow-sm" style="max-height: 250px; object-fit: contain;">
+                        </a>
                     </div>
                 </div>
-                <div id="validationSection" class="mt-3 text-center">
-                    <!-- Aquí se mostrará el estado y botón para validar -->
-                </div>
+                <div id="validationSection" class="mt-4 text-center"></div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
@@ -233,11 +372,11 @@ require_once 'sidebar.php';
     </div>
 </div>
 
-
 <?php require_once 'footer.php'; ?>
 
 <script>
-    var csrfToken = '<?php echo $_SESSION['csrf_token']; ?>';
+    var csrfToken = '<?= $_SESSION['csrf_token']; ?>';
+
     $(document).ready(function() {
         var table = $('#registrationsTable').DataTable({
             dom: 'Bfrtip',
@@ -247,52 +386,59 @@ require_once 'sidebar.php';
             }
         });
 
-        // Abrir modal con datos del pago al presionar "Validar Pago"
-        $('.validate-payment-btn').click(function() {
+        // Abrir Modal de Validación
+        $(document).on('click', '.validate-payment-btn', function() {
             var btn = $(this);
             $('#modalFullName').text(btn.data('name'));
             $('#modalPaymentMethod').text(btn.data('payment-method'));
+            $('#modalPaymentBank').text(btn.data('payment-bank'));
             $('#modalPaymentPhone').text(btn.data('payment-phone'));
             $('#modalPaymentReference').text(btn.data('payment-reference'));
             $('#modalPaymentAmount').text(btn.data('payment-amount'));
             $('#modalBcvRate').text(btn.data('bcv-rate'));
-            $('#modalPaymentProof').attr('src', btn.data('payment-proof'));
 
-            // Estado validación y botón
+            var proofPath = btn.data('payment-proof');
+            if (proofPath) {
+                if (
+                    !proofPath.startsWith('http') &&
+                    !proofPath.startsWith('//') &&
+                    !proofPath.startsWith('/') &&
+                    !proofPath.startsWith('../')
+                ) {
+                    proofPath = '../' + proofPath;
+                }
+                $('#modalPaymentProof').attr('src', proofPath).show();
+                $('#modalPaymentProofLink').attr('href', proofPath);
+            } else {
+                $('#modalPaymentProof').hide();
+            }
+
             var validated = btn.data('payment-verified');
             var html = '';
             if (validated == 0) {
                 html = '<div class="alert alert-warning mb-3 d-flex align-items-center justify-content-center">' +
-                    '<i class="bi bi-exclamation-circle me-2 fs-4"></i> Falta Validar Pago' +
+                    '<i class="bi bi-exclamation-circle me-2 fs-4"></i> Pago Pendiente por Verificación' +
                     '</div>' +
-                    '<button id="btnConfirmValidate" class="btn btn-success">Marcar como Validado</button>';
+                    '<button id="btnConfirmValidate" class="btn btn-success btn-lg px-4" data-id="' + btn.data('id') + '"><i class="bi bi-check2-circle me-1"></i> Aprobar Pago e Inscripción</button>';
             } else {
                 html = '<div class="alert alert-success mb-3 d-flex align-items-center justify-content-center">' +
-                    '<i class="bi bi-check-circle me-2 fs-4"></i> Pago Validado' +
+                    '<i class="bi bi-check-circle me-2 fs-4"></i> Pago Verificado Correctamente' +
                     '</div>';
             }
             $('#validationSection').html(html);
 
-            // Guardar id para actualizar
-            $('#btnConfirmValidate').data('id', btn.data('id'));
-
-            // Mostrar modal
             var modal = new bootstrap.Modal(document.getElementById('paymentValidationModal'));
             modal.show();
         });
 
-        // Evento para confirmar validación del pago
+        // Confirmar Validación de Pago AJAX
         $(document).on('click', '#btnConfirmValidate', function() {
-            var btn = $(this);
-            var id = btn.data('id');
+            var id = $(this).data('id');
 
-            // Mostrar confirmación antes de proceder
-            if (!confirm('¿Está seguro de que desea marcar este pago como validado?')) {
-                return; // si usuario cancela, no se hace nada
-            }
+            if (!confirm('¿Confirma que ha verificado los fondos en la cuenta bancaria?')) return;
 
             $.ajax({
-                url: '', // mismo archivo PHP que maneja actualización
+                url: '',
                 type: 'POST',
                 data: {
                     action: 'validate_payment',
@@ -302,34 +448,56 @@ require_once 'sidebar.php';
                 dataType: 'json',
                 success: function(response) {
                     if (response.success) {
-                        // Actualizar interfaz modal
-                        $('#validationSection').html('<div class="alert alert-success mb-3 d-flex align-items-center justify-content-center"><i class="bi bi-check-circle me-2 fs-4"></i> Pago Validado</div>');
-
-                        // Actualizar botón en la fila
-                        var btn = $('button.validate-payment-btn[data-id="' + id + '"]');
-                        btn.data('payment-verified', 1); // Cambiar data attribute a 1
-                        btn.removeClass('btn-warning').addClass('btn-success'); // Cambiar color al verde
-                        btn.html('<i class="bi bi-check-circle-fill me-1"></i> Pago Verificado'); // Cambiar texto e ícono
+                        location.reload();
                     } else {
                         alert('Error: ' + (response.msg || 'No se pudo actualizar'));
                     }
                 },
                 error: function() {
-                    alert('Error en la petición Ajax');
+                    alert('Error en la petición AJAX');
                 }
             });
         });
 
-        // Función toggle-status para mantener (como tienes ya)
-        $('.toggle-status').click(function() {
+        // Rechazar Pago AJAX
+        $(document).on('click', '.reject-payment-btn', function() {
+            var id = $(this).data('id');
+
+            if (!confirm('¿Está seguro de rechazar este pago? Se liberará el cupo y la inscripción será cancelada.')) return;
+
+            $.ajax({
+                url: '',
+                type: 'POST',
+                data: {
+                    action: 'reject_payment',
+                    id: id,
+                    csrf_token: csrfToken
+                },
+                dataType: 'json',
+                success: function(response) {
+                    if (response.success) {
+                        location.reload();
+                    } else {
+                        alert('Error: ' + (response.msg || 'No se pudo actualizar'));
+                    }
+                },
+                error: function() {
+                    alert('Error en la petición AJAX');
+                }
+            });
+        });
+
+        // Toggle Status (Confirmar / Cancelar Registro)
+        $(document).on('click', '.toggle-status', function() {
             var boton = $(this);
             var id = boton.data('id');
             var status = boton.data('status');
 
             $.ajax({
-                url: '', // mismo archivo
+                url: '',
                 type: 'POST',
                 data: {
+                    action: 'toggle_status',
                     id: id,
                     status: status,
                     csrf_token: csrfToken
@@ -337,19 +505,17 @@ require_once 'sidebar.php';
                 dataType: 'json',
                 success: function(response) {
                     if (response.success) {
-                        var fila = boton.closest('tr');
-                        table.row(fila).remove().draw(false);
+                        location.reload();
                     } else {
                         alert('Error: ' + (response.msg || 'No se pudo actualizar'));
                     }
                 },
                 error: function() {
-                    alert('Error en la petición Ajax');
+                    alert('Error en la petición AJAX');
                 }
             });
         });
     });
 </script>
 
-<!-- Importante para íconos -->
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet" />
